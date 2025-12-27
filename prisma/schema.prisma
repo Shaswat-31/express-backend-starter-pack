@@ -1,0 +1,158 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql" // or "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PATIENT
+  CLINIC
+  ADMIN
+}
+
+enum BookingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String    @unique
+  password  String
+  role      Role
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // One-to-one relations
+  patient   Patient?
+  clinic    Clinic?
+  admin     Admin?
+}
+
+model Patient {
+  id         Int       @id @default(autoincrement())
+  userId     Int       @unique
+  insurance  String?
+  latitude   Float?
+  longitude  Float?
+
+  user       User      @relation(fields: [userId], references: [id])
+  bookings   Booking[]
+}
+
+model Clinic {
+  id         Int        @id @default(autoincrement())
+  userId     Int        @unique
+  name       String
+  address    String
+  latitude   Float
+  longitude  Float
+  phone      String?
+  approved   Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+
+  user       User       @relation(fields: [userId], references: [id])
+  dentists   Dentist[]
+  bookings   Booking[]
+  logs       ClinicLog[]
+  approvals  Approval[]   // ✅ Added opposite relation for Approval
+}
+
+model Dentist {
+  id             Int        @id @default(autoincrement())
+  clinicId       Int
+  name           String
+  specialization String?
+  experience     Int?
+  available      Boolean    @default(true)
+
+  clinic         Clinic     @relation(fields: [clinicId], references: [id])
+  schedules      Schedule[]
+  bookings       Booking[]
+}
+
+model Schedule {
+  id           Int        @id @default(autoincrement())
+  dentistId    Int
+  dayOfWeek    String
+  startTime    DateTime
+  endTime      DateTime
+  slotDuration Int
+  slotsPerHour Int?
+
+  dentist      Dentist     @relation(fields: [dentistId], references: [id])
+  bookings     Booking[]   // ✅ Added opposite relation for Booking
+}
+
+model Booking {
+  id          Int            @id @default(autoincrement())
+  patientId   Int
+  clinicId    Int
+  dentistId   Int
+  scheduleId  Int?
+  date        DateTime
+  slotTime    DateTime
+  status      BookingStatus  @default(PENDING)
+  notes       String?
+
+  patient     Patient        @relation(fields: [patientId], references: [id])
+  clinic      Clinic         @relation(fields: [clinicId], references: [id])
+  dentist     Dentist        @relation(fields: [dentistId], references: [id])
+  schedule    Schedule?      @relation(fields: [scheduleId], references: [id])
+}
+
+model Admin {
+  id               Int       @id @default(autoincrement())
+  userId           Int       @unique
+  position         String?
+  canApproveClinics Boolean  @default(true)
+  canManageBookings Boolean  @default(true)
+  canViewReports    Boolean  @default(true)
+
+  user       User       @relation(fields: [userId], references: [id])
+  approvals  Approval[]
+  logs       AdminLog[]
+}
+
+model Approval {
+  id         Int       @id @default(autoincrement())
+  adminId    Int
+  clinicId   Int
+  approvedAt DateTime  @default(now())
+  status     Boolean   // true = approved, false = rejected
+  notes      String?
+
+  admin      Admin     @relation(fields: [adminId], references: [id])
+  clinic     Clinic    @relation(fields: [clinicId], references: [id])
+}
+
+model AdminLog {
+  id         Int       @id @default(autoincrement())
+  adminId    Int
+  action     String
+  targetType String     // e.g. "Booking", "Clinic", "User"
+  targetId   Int?
+  createdAt  DateTime   @default(now())
+
+  admin      Admin      @relation(fields: [adminId], references: [id])
+}
+
+model ClinicLog {
+  id          Int       @id @default(autoincrement())
+  clinicId    Int
+  action      String     // e.g. "APPROVE_BOOKING", "ADD_DENTIST"
+  targetType  String?    // e.g. "Booking", "Dentist", "Schedule"
+  targetId    Int?       // related entity id
+  description String?    // optional detailed message
+  createdAt   DateTime   @default(now())
+
+  clinic      Clinic     @relation(fields: [clinicId], references: [id])
+}

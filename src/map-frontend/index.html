@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Dentist Location Picker</title>
+    <style>
+      #map { height: 500px; width: 100%; }
+      #pac-input { margin-top: 10px; width: 300px; padding: 10px; }
+    </style>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAoxkTudvODnZGp4DqTNrvdg9p4Id1WWE4&libraries=places" defer></script>
+    <script src="map.js" defer></script>
+  </head>
+  <body>
+    <h1>Select a Location to See Nearby Dentists (1km)</h1>
+    <input id="pac-input" type="text" placeholder="Search for a location">
+    <div id="map"></div>
+  </body>
+</html>
